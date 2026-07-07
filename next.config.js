@@ -1,16 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
-    ],
-  },
+  /* Menghapus konfigurasi gambar eksternal yang sensitif terhadap versi compiler Vercel */
 };
 
 module.exports = nextConfig;
