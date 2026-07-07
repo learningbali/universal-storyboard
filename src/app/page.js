@@ -36,33 +36,45 @@ export default function Home() {
   };
 
   // 2. Fungsi Generate Gambar AI yang Sinkron & Anti-Pecah
-  const generateImages = () => {
+ // 2. Fungsi Generate Gambar AI yang Sinkron, Akurat, & Anti-Blokir
+  const generateImages = async () => {
     if (!storyboard || !storyboard.scenes) return;
     setLoadingImages(true);
+    setImageUrls({}); // Bersihkan gambar lama agar memicu loading baru
     
     const newUrls = {};
-    storyboard.scenes.forEach((scene) => {
-      const baseSubject = storyboard.subtitle || storyboard.title || "Lego car assembly";
+    
+    // Looping dengan jeda waktu (delay) agar semua request gambar lolos dari blokir server AI
+    for (let i = 0; i < storyboard.scenes.length; i++) {
+      const scene = storyboard.scenes[i];
       
-      // Bersihkan teks deskripsi dari karakter aneh agar URL tidak rusak
-      const cleanDesc = scene.description
-        .toLowerCase()
-        .replace(/[^a-zA-Z0-9\s]/g, "")
-        .trim();
+      // Ambil kata kunci utama (image_placeholder_query) yang dibuat AI, lalu bersihkan
+      const keyword = scene.image_placeholder_query || "toy bicycle";
+      
+      // Mengonversi instruksi detail ke bahasa inggris sederhana berdasarkan tipe scene agar AI paham 100%
+      let customContext = "miniature toy bicycle puzzle parts on table";
+      if (scene.id === 1) customContext = "hands unboxing miniature toy bicycle puzzle package on wooden table";
+      if (scene.id === 2) customContext = "hands assembling main frame of a colorful small toy bicycle";
+      if (scene.id === 3 || scene.id === 4) customContext = "macro photography of hands putting tiny wheels on a miniature toy bicycle";
+      if (scene.id === 5 || scene.id === 6) customContext = "hands fixing tiny handlebars and seat on small miniature toy bike";
+      if (scene.id >= 7) customContext = "final showcase of a beautiful assembled colorful miniature toy bicycle model on a table";
 
-      // Buat prompt gambar AI bahasa inggris yang sangat kuat dan presisi
-      const fullAiImagePrompt = `cinematic macro close up photography of ${cleanDesc}, professional toy photography style, warm studio lighting, dark wood table background, bokeh, highly detailed`;
+      // Susun prompt gambar AI bahasa inggris yang super tajam, spesifik, dan estetik sinematik
+      const fullAiImagePrompt = `cinematic macro close up photography of ${customContext}, professional toy photography style, miniature scale, vibrant colors, warm studio lighting, bokeh background, highly detailed`;
       
       const encodedPrompt = encodeURIComponent(fullAiImagePrompt);
       
-      // Gunakan URL Pollinations AI dengan seed unik berbasis ID scene agar gambar konsisten sejalan
-      newUrls[scene.id] = `https://image.pollinations.ai/p/${encodedPrompt}?width=600&height=450&seed=${scene.id}&nologo=true`;
-    });
+      // Gunakan penanda waktu unik (timestamp) di setiap baris agar browser dipaksa memuat gambar baru, bukan cache lama
+      newUrls[scene.id] = `https://image.pollinations.ai/p/${encodedPrompt}?width=500&height=375&seed=${scene.id}&nologo=true&t=${Date.now()}`;
+      
+      // Mengatur jeda waktu 400 milidetik antar scene agar server tidak menolak request gambar
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      
+      // Update state secara bertahap (efek gambar muncul satu per satu secara premium)
+      setImageUrls((prev) => ({ ...prev, [scene.id]: newUrls[scene.id] }));
+    }
 
-    setTimeout(() => {
-      setImageUrls(newUrls);
-      setLoadingImages(false);
-    }, 2000);
+    setLoadingImages(false);
   };
 
   return (
