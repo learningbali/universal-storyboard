@@ -1,4 +1,4 @@
-import "./globals.css"; // Pastikan Tailwind terhubung di sini
+import "./globals.css"; // Pastikan Tailwind t erhubung di sini
 
 export const metadata = {
   title: "AI Universal Storyboard",
