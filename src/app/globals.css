@@ -2,23 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Kustomisasi scrollbar mini  bertema gelap (opsional untuk estetika) */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #000000;
-}
-::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
-}
-
 body {
   background-color: #000000;
   color: #ffffff;
-  overflow-x: hidden;
 }
