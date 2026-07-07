@@ -1,7 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function POST(req) {
   try {
@@ -11,9 +8,14 @@ export async function POST(req) {
       return NextResponse.json({ error: "Prompt tidak boleh kosong" }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "API Key Gemini belum dikonfigurasi di Vercel" }, { status: 500 });
+    }
 
-    // Gabungkan instruksi sistem langsung ke dalam prompt utama agar kompatibel dengan versi SDK lama
+    // Menggunakan endpoint v1beta untuk memastikan model gemini-1.5-flash terdeteksi sempurna
+    const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
     const fullPrompt = `
       Anda adalah sutradara video pendek profesional untuk platform TikTok/Reels. Tugas Anda adalah membuat skrip storyboard terstruktur berdasarkan ide dari user.
       
@@ -41,11 +43,35 @@ export async function POST(req) {
       Buatlah adegan yang padat (antara 6 sampai 8 scene) dengan pembagian timestamp yang presisi dan logis sesuai durasi total video.
     `;
 
-    // Hapus configuration yang memicu error di SDK versi lama
-    const result = await model.generateContent(fullPrompt);
+    // Request langsung via Fetch API ke Google
+    const response = await fetch(targetUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: fullPrompt,
+              },
+            ],
+          },
+        ],
+      }),
+    });
 
-    const responseText = result.response.text();
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Gagal memanggil API Google");
+    }
+
+    const resData = await response.json();
     
+    // Mengambil teks balasan dari struktur data asli Google API
+    const responseText = resData.candidates[0].content.parts[0].text;
+
     // Bersihkan teks jika AI tidak sengaja memberikan format markdown ```json ... ```
     const cleanedText = responseText
       .replace(/```json/g, "")
@@ -56,7 +82,7 @@ export async function POST(req) {
 
     return NextResponse.json(storyboardData);
   } catch (error) {
-    console.error("Gemini Error:", error);
+    console.error("Gemini Rest API Error:", error);
     return NextResponse.json({ error: "Gagal memproses AI: " + error.message }, { status: 500 });
   }
 }
