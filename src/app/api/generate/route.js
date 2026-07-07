@@ -13,7 +13,6 @@ export async function POST(req) {
       return NextResponse.json({ error: "API Key Gemini belum dikonfigurasi di Vercel" }, { status: 500 });
     }
 
-    // PERBAIKAN UTAMA: Menggunakan model generasi terbaru gemini-2.5-flash
     const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const fullPrompt = `
@@ -23,6 +22,8 @@ export async function POST(req) {
 
       PENTING: Anda WAJIB membalas HANYA dengan format JSON murni tanpa markdown, tanpa tanda \`\`\`json ataupun tag pembungkus lainnya. Jangan ketik teks penjelasan apa pun di luar JSON!
       
+      ATURAN TIMESTAMP: Waktu adegan WAJIB berurutan maju ke depan secara logis (misalnya total durasi 10 detik dibagi 8 scene, maka scene 1: 0.00-1.20, scene 2: 1.20-2.40, scene 3: 2.40-3.60, dst). Jangan biarkan waktu scene mundur kembali ke angka kecil!
+
       Struktur JSON harus persis seperti ini:
       {
         "title": "JUDUL BESAR UTAMA (misal: ASMR MERAKIT LEGO)",
@@ -33,31 +34,21 @@ export async function POST(req) {
         "scenes": [
           {
             "id": 1,
-            "timestamp": "0.00 - 1.20",
+            "timestamp": "CONTOH: 0.00 - 1.20",
             "image_placeholder_query": "one single simple english keyword for the main object in this scene",
             "description": "DESKRIPSI VISUAL ADEGAN DALAM HURUF KAPITAL",
             "sfx": "DETAIL EFEK SUARA DALAM HURUF KAPITAL (misal: KLIK LEGO)"
           }
         ]
       }
-      Buatlah adegan yang padat (antara 6 sampai 8 scene) dengan pembagian timestamp yang presisi dan logis sesuai durasi total video.
+      Buatlah adegan yang padat (antara 6 sampai 8 scene).
     `;
 
     const response = await fetch(targetUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: fullPrompt,
-              },
-            ],
-          },
-        ],
+        contents: [{ parts: [{ text: fullPrompt }] }],
       }),
     });
 
@@ -67,11 +58,6 @@ export async function POST(req) {
     }
 
     const resData = await response.json();
-    
-    if (!resData.candidates || !resData.candidates[0]?.content?.parts[0]?.text) {
-      throw new Error("Format respon API Google di luar dugaan");
-    }
-    
     const responseText = resData.candidates[0].content.parts[0].text;
 
     const cleanedText = responseText
@@ -80,7 +66,6 @@ export async function POST(req) {
       .trim();
 
     const storyboardData = JSON.parse(cleanedText);
-
     return NextResponse.json(storyboardData);
   } catch (error) {
     console.error("Gemini Rest API Error:", error);
