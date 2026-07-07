@@ -94,8 +94,7 @@ export default function Home() {
               </div>
             ))}
           </main>
-
-          {/* FOOTER */}
+{/* FOOTER */}
           <footer class="flex flex-wrap justify-center gap-4 md:gap-8 text-[10px] text-zinc-500 border-t border-zinc-900 pt-6 mt-6 tracking-widest uppercase">
             {storyboard.footer_notes?.map((note, idx) => (
               <div key={idx} class="flex items-center gap-1">
@@ -105,11 +104,11 @@ export default function Home() {
           </footer>
         </div>
       ) : (
-        {!loading && (
+        !loading && (
           <div class="text-zinc-600 text-sm border border-dashed border-zinc-800 p-10 rounded-xl max-w-md text-center">
             Masukkan ide konten Anda di atas untuk membuat visual storyboard otomatis berbasis AI.
           </div>
-        )}
+        )
       )}
     </div>
   );
