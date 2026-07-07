@@ -13,8 +13,8 @@ export async function POST(req) {
       return NextResponse.json({ error: "API Key Gemini belum dikonfigurasi di Vercel" }, { status: 500 });
     }
 
-    // Menggunakan endpoint v1beta untuk memastikan model gemini-1.5-flash terdeteksi sempurna
-    const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Menggunakan penamaan versi stabil terbaru (gemini-2.5-flash) di endpoint v1beta resmi
+    const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const fullPrompt = `
       Anda adalah sutradara video pendek profesional untuk platform TikTok/Reels. Tugas Anda adalah membuat skrip storyboard terstruktur berdasarkan ide dari user.
@@ -43,7 +43,6 @@ export async function POST(req) {
       Buatlah adegan yang padat (antara 6 sampai 8 scene) dengan pembagian timestamp yang presisi dan logis sesuai durasi total video.
     `;
 
-    // Request langsung via Fetch API ke Google
     const response = await fetch(targetUrl, {
       method: "POST",
       headers: {
@@ -68,11 +67,8 @@ export async function POST(req) {
     }
 
     const resData = await response.json();
-    
-    // Mengambil teks balasan dari struktur data asli Google API
     const responseText = resData.candidates[0].content.parts[0].text;
 
-    // Bersihkan teks jika AI tidak sengaja memberikan format markdown ```json ... ```
     const cleanedText = responseText
       .replace(/```json/g, "")
       .replace(/```/g, "")
