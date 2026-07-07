@@ -8,7 +8,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        // Menambahkan opsi font serif sinematik jika browser mendukung
+        // Menambahkan opsi font  serif sinematik jika browser mendukung
         serif: ['Georgia', 'ui-serif', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
       },
     },
