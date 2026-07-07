@@ -34,52 +34,62 @@ export default function Home() {
     }
   };
 
-  // 2. Fungsi Generate Gambar AI - Versi Konsistensi Warna & Backup Anti-Error
+  // 2. Fungsi Generate Gambar - Otomatis Mengikuti Intisari Cerita & Konsisten Berdasarkan Subjek
   const generateImages = async () => {
     if (!storyboard || !storyboard.scenes) return;
     setLoadingImages(true);
-    setImageUrls({}); // Reset layar
+    setImageUrls({}); 
 
-    // JAWABAN MASALAH KONSISTENSI: Tetapkan mobil spesifik (misal: Mobil Balap Kuning) untuk SEMUA scene
-    const carModelEn = "vibrant yellow racing toy car with blue stripe";
-    
-    // Antrean tertib memuat gambar satu per satu
+    // 1. Ekstrak subjek utama dari judul (contoh: "MITSUBISHI PAJERO DAKKAR" atau "SEPEDA ANAK IMUT")
+    // Kita bersihkan kata-kata filter agar menjadi kata benda murni bahasa inggris / nama model asli
+    const mainObject = (storyboard.subtitle || storyboard.title || "miniature model")
+      .toLowerCase()
+      .replace(/asmr|merakit|puzzle|video|short/g, "")
+      .trim();
+
+    // Kamus instan untuk mendeteksi aksi utama dalam Bahasa Indonesia ke Bahasa Inggris
+    const translateAction = (textIndo) => {
+      const txt = textIndo.toLowerCase();
+      if (txt.includes("buka") || txt.includes("kotak") || txt.includes("kemasan")) return "unboxing and opening the package of";
+      if (txt.includes("chassis") || txt.includes("rangka") || txt.includes("dasar")) return "assembling the chassis core frame of";
+      if (txt.includes("roda") || txt.includes("ban") || txt.includes("as roda")) return "extreme close up of hands installing wheels on";
+      if (txt.includes("stang") || txt.includes("sadel") || txt.includes("kemudi") || txt.includes("stuck")) return "fixing the handlebar and seating details onto";
+      if (txt.includes("bodi") || txt.includes("body") || txt.includes("pasang bodi")) return "snapping the colorful body shell onto";
+      if (txt.includes("stiker") || txt.includes("sticker") || txt.includes("pinset") || txt.includes("logo")) return "using tweezers to apply tiny decals and stickers onto";
+      if (txt.includes("tes") || txt.includes("uji") || txt.includes("putar")) return "testing and spinning the functional parts of the completed";
+      if (txt.includes("akhir") || txt.includes("selesai") || txt.includes("pamer") || txt.includes("rampung")) return "final showcase display of the fully finished";
+      
+      // Jika tidak ada kata kunci yang cocok, gunakan query objek bahasa inggris bawaan dari Gemini backend
+      return "detailed assembly process of";
+    };
+
+    // Antrean tertib memuat gambar satu per satu (Sequential Load)
     for (let i = 0; i < storyboard.scenes.length; i++) {
       const scene = storyboard.scenes[i];
       
-      // JAWABAN MASALAH ALUR CERITA: Tulis prompt spesifik untuk setiap scene sesuai text deskripsi
-      let scenePromptEn = `Assembling parts of ${carModelEn}`;
+      // Tentukan core action berdasarkan intisari deskripsi scene masing-masing
+      const coreActionEn = translateAction(scene.description);
       
-      if (i === 0) {
-        scenePromptEn = `macro shot of colorful packaging box of a ${carModelEn} kit being unboxed on dark wooden table`;
-      } else if (i === 1) {
-        scenePromptEn = `close up photography of two main pieces of a black chassis bare frame for ${carModelEn} being assembled`;
-      } else if (i === 2 || i === 3) {
-        // PERBAIKAN SCENE 3: Fokus makro pada tangan kecil memasang ban ke as chassis
-        scenePromptEn = `extreme macro photography of tiny fingers holding a small rubber tire and axle, carefully rotating and attaching it onto the chassis bare frame of a ${carModelEn} kit`;
-      } else if (i === 4) {
-        scenePromptEn = `macro photography of hands snapping the yellow body shell onto the finished chassis assembly of the ${carModelEn}`;
-      } else if (i === 5) {
-        scenePromptEn = `extreme close up of tweezers putting small decals and logo onto the surface of the ${carModelEn}`;
-      } else if (i === 6) {
-        scenePromptEn = `completed ${carModelEn} with smooth rolling wheels on dark wooden table showcase display`;
-      }
+      // Ambil keyword inggris spesifik objek dari scene (bawaan dari Gemini)
+      const sceneKeyword = (scene.image_placeholder_query || "toy part").toLowerCase();
 
-      // Gabungkan menjadi instruksi gambar studio makro yang tajam dan bersih
-      const sharpAiPrompt = `cinematic macro close up of ${scenePromptEn}, professional toy photography style, miniature scale, warm studio lighting, bokeh background, highly detailed texture`;
+      // RANCANGAN PROMPT CERDAS: 
+      // Menggabungkan (Aksi Inti Sesuai Scene) + (Nama Objek Utama dari Judul agar Konsisten) + (Detail Fokus dari Gemini)
+      const sharpAiPrompt = `macro close up photography of hands doing ${coreActionEn} ${mainObject}, focusing on ${sceneKeyword}, realistic miniature scale toy style, warm studio lighting, bokeh background, highly detailed texture`;
       const encodedPrompt = encodeURIComponent(sharpAiPrompt);
       
-      // JAWABAN MASALAH LOAD LAMA: Gunakan resolusi thumbnail super cepat (280x210) dan seed unik
+      // UKURAN KECIL & CEPAT: Resolusi draf diperkecil ke 280x210 agar muat instan tanpa membuat server AI macet
+      // Menggunakan SEED dinamis yang dikunci per ID agar variasi render tetap rapi namun runtut
       const finalImageSourceUrl = `https://image.pollinations.ai/p/${encodedPrompt}?width=280&height=210&seed=${scene.id}&nologo=true&t=${Date.now()}`;
       
-      // Masukkan gambar ke dalam antrean visual satu per satu
+      // Update state per satu adegan demi adegan
       setImageUrls((prev) => ({ 
         ...prev, 
         [scene.id]: finalImageSourceUrl 
       }));
       
-      // Berikan jeda waktu 600 milidetik agar request gambar berjalan lancar
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      // Jeda 650 milidetik agar server AI memproses antrean gambar secara rileks dan anti-gagal
+      await new Promise((resolve) => setTimeout(resolve, 650));
     }
 
     setLoadingImages(false);
@@ -98,7 +108,7 @@ export default function Home() {
             type="text"
             value={inputPrompt}
             onChange={(e) => setInputPrompt(e.target.value)}
-            placeholder="Contoh: ASMR merakit miniatur puzzle mobil mini anak..."
+            placeholder="Masukkan ide bebas: rakit lego, miniatur puzzle sepeda, mainan robot..."
             className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-500 transition placeholder-zinc-700 shadow-inner"
             disabled={loadingText}
           />
@@ -142,16 +152,16 @@ export default function Home() {
           {/* GRID PANELS */}
           <main className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 my-6">
             {storyboard.scenes?.map((scene) => (
-              <div key={scene.id} className="border border-zinc-800 flex flex-col justify-between bg-black rounded-xl overflow-hidden shadow-lg transition-all duration-300 relative group">
+              <div key={scene.id} className="border border-zinc-800 flex flex-col justify-between bg-black rounded-xl overflow-hidden shadow-lg transition-all duration-300 relative">
                 
                 {/* TIMESTAMPS */}
-                <div className="p-2.5 text-[10px] font-mono border-b border-zinc-800 text-zinc-400 bg-zinc-900/60 uppercase tracking-widest flex justify-between items-center z-10 relative">
+                <div className="p-2.5 text-[10px] font-mono border-b border-zinc-800 text-zinc-400 bg-zinc-900/60 uppercase tracking-widest flex justify-between items-center">
                   <span>SCENE {scene.id}</span>
                   <span className="text-amber-500/80 font-bold">{scene.timestamp}</span>
                 </div>
                 
-                {/* JAWABAN MASALAH ANTI-PECH/LOAD LAMA: Kotak kontainer diperkecil & backup link otomatis */}
-                <div className="relative aspect-[4/3] max-w-[200px] w-full mx-auto my-4 bg-zinc-950 flex items-center justify-center overflow-hidden border border-zinc-900 rounded-lg shadow-inner z-0">
+                {/* KONTAINER MINI THUMBNAIL */}
+                <div className="relative aspect-[4/3] max-w-[200px] w-full mx-auto my-4 bg-zinc-950 flex items-center justify-center overflow-hidden border border-zinc-900 rounded-lg shadow-inner">
                   {imageUrls[scene.id] ? (
                     <img 
                       src={imageUrls[scene.id]} 
@@ -159,20 +169,20 @@ export default function Home() {
                       className="w-full h-full object-cover filter grayscale hover:grayscale-0 transition-all duration-500"
                       loading="lazy"
                       onError={(e) => {
-                        // Anti-Pecah otomatis jika link AI gagal/lama
-                        e.target.src = `https://loremflickr.com/280/210/toycar,miniature,yellow?random=${scene.id}`;
+                        // Sistem Cadangan Otomatis jika API server AI sedang penuh / lambat
+                        e.target.src = `https://loremflickr.com/280/210/miniature,toy?random=${scene.id}`;
                       }}
                     />
                   ) : (
-                    <div className="text-zinc-700 flex flex-col items-center gap-1.5 p-4 text-center animate-pulse">
+                    <div className="text-zinc-700 flex flex-col items-center gap-1.5 p-4 text-center">
                       <ImageIcon size={16} className="text-amber-500/30" />
-                      <span className="text-[8px] uppercase tracking-widest text-zinc-700">Load...</span>
+                      <span className="text-[8px] uppercase tracking-widest text-zinc-700">Antrean...</span>
                     </div>
                   )}
                 </div>
 
                 {/* TEXT DESKRIPSI & SFX */}
-                <div className="p-4 text-center text-[11px] tracking-wide flex-1 flex flex-col justify-between min-h-[95px] bg-zinc-950 z-10 relative">
+                <div className="p-4 text-center text-[11px] tracking-wide flex-1 flex flex-col justify-between min-h-[95px] bg-zinc-950">
                   <p className="font-medium text-zinc-300 leading-relaxed uppercase">{scene.description}</p>
                   <p className="text-amber-500 text-[9px] font-mono tracking-widest font-bold mt-3 border-t border-zinc-900 pt-2">
                     SFX: {scene.sfx}
@@ -193,7 +203,7 @@ export default function Home() {
         </div>
       ) : (
         !loadingText && (
-          <div className="text-zinc-600 text-xs tracking-widest border border-dashed border-zinc-800 p-12 rounded-2xl max-w-md text-center bg-zinc-950/20 uppercase animate-pulse">
+          <div className="text-zinc-600 text-xs tracking-widest border border-dashed border-zinc-800 p-12 rounded-2xl max-w-md text-center bg-zinc-950/20 uppercase">
             Silakan masukkan ide konsep video Anda pada kolom di atas untuk memulai produksi.
           </div>
         )
