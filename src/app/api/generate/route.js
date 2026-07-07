@@ -10,14 +10,14 @@ export async function POST(req) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "API Key Gemini belum dikonfigurasi di Vercel" }, { status: 500 });
+      return NextResponse.json({ error: "API Key belum terpasang di Vercel" }, { status: 500 });
     }
 
-    // Menggunakan penamaan versi stabil terbaru (gemini-2.5-flash) di endpoint v1beta resmi
+    // Menggunakan model stabil paling mutakhir google
     const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const fullPrompt = `
-      Anda adalah sutradara video pendek profesional untuk platform TikTok/Reels. Tugas Anda adalah membuat skrip storyboard terstruktur berdasarkan ide dari user.
+      Anda adalah sutradara video pendek profesional untuk platform TikTok/Reels/Shorts. Tugas Anda membuat skrip storyboard terstruktur berdasarkan ide user.
       
       Ide video dari user: "${prompt}"
 
@@ -34,7 +34,7 @@ export async function POST(req) {
           {
             "id": 1,
             "timestamp": "0.00 - 1.20",
-            "image_placeholder_query": "kata kunci gambar spesifik dalam bahasa inggris",
+            "image_placeholder_query": "SATU KATA KUNCI OBJEK UTAMA DALAM BAHASA INGGRIS SAJA (misal: lego, car, unboxing, wheel, engine)",
             "description": "DESKRIPSI VISUAL ADEGAN DALAM HURUF KAPITAL",
             "sfx": "DETAIL EFEK SUARA DALAM HURUF KAPITAL (misal: KLIK LEGO)"
           }
@@ -45,19 +45,9 @@ export async function POST(req) {
 
     const response = await fetch(targetUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: fullPrompt,
-              },
-            ],
-          },
-        ],
+        contents: [{ parts: [{ text: fullPrompt }] }]
       }),
     });
 
@@ -75,7 +65,6 @@ export async function POST(req) {
       .trim();
 
     const storyboardData = JSON.parse(cleanedText);
-
     return NextResponse.json(storyboardData);
   } catch (error) {
     console.error("Gemini Rest API Error:", error);
