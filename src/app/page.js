@@ -36,52 +36,55 @@ export default function Home() {
   };
 
   // 2. Fungsi Generate Gambar AI Spesifik Alur, Resolusi Ringan, & Load Satu per Satu
+ // 2. Fungsi Generate Gambar AI - Versi Final Anti-Error & Pasti Sinkron
   const generateImages = async () => {
     if (!storyboard || !storyboard.scenes) return;
     setLoadingImages(true);
-    setImageUrls({}); 
+    setImageUrls({}); // Reset layar dari gambar lama
     
-    // Deteksi subjek utama video dari judul untuk bahan konsistensi gambar AI
-    const mainSubject = (storyboard.subtitle || storyboard.title || "miniature project")
-      .toLowerCase()
-      .replace(/asmr|merakit|puzzle/g, "")
-      .trim();
-
     // Jalankan antrean tertib memuat gambar satu per satu secara berurutan
     for (let i = 0; i < storyboard.scenes.length; i++) {
       const scene = storyboard.scenes[i];
-      const sceneDesc = scene.description.toLowerCase();
       
-      // Logika Penyelaras Alur Cerita Otomatis (Mengubah Teks Indonesia ke Prompt Gambar AI Inggris yang Akurat)
-      let progressiveAction = `assembling parts of ${mainSubject}`;
+      // Ambil kata kunci cadangan bahasa inggris dari AI, jika kosong gunakan default mainan mobil
+      const englishKeyword = (scene.image_placeholder_query || "miniature toy car").toLowerCase();
       
-      if (i === 0 || sceneDesc.includes("buka") || sceneDesc.includes("kotak")) {
-        progressiveAction = `unboxing package elements of ${mainSubject} on a table`;
-      } else if (i === 1 || sceneDesc.includes("awal") || sceneDesc.includes("dasar") || sceneDesc.includes("chassis")) {
-        progressiveAction = `assembling the starting base foundation pieces of ${mainSubject}`;
-      } else if (sceneDesc.includes("roda") || sceneDesc.includes("ban")) {
-        progressiveAction = `attaching small tiny wheels onto the structure of ${mainSubject}`;
-      } else if (sceneDesc.includes("stang") || sceneDesc.includes("sadel") || sceneDesc.includes("kemudi")) {
-        progressiveAction = `fixing micro details like steering handle bar onto ${mainSubject}`;
-      } else if (i === storyboard.scenes.length - 1 || sceneDesc.includes("akhir") || sceneDesc.includes("jadi")) {
-        progressiveAction = `completed assembled final product model of ${mainSubject} showcase display`;
+      // Trik Jitu: Menyusun alur prompt berdasarkan nomor urut Scene agar gambar berurutan maju dan sinkron
+      let scenePromptEn = `assembling parts of small plastic toy car`;
+      
+      if (i === 0) {
+        scenePromptEn = `hands unboxing miniature plastic toy car parts package on top of a clean table`;
+      } else if (i === 1) {
+        scenePromptEn = `hands holding and picking up a small plastic toy car chassis component`;
+      } else if (i === 2 || i === 3) {
+        scenePromptEn = `macro close up of hands attaching tiny rubber wheels onto a miniature toy car chassis`;
+      } else if (i === 4) {
+        scenePromptEn = `hands carefully clicking and snapping a colorful car body shell onto the chassis`;
+      } else if (i === 5) {
+        scenePromptEn = `macro shot of tweezers putting small decorative stickers onto a mini toy car`;
+      } else if (i === 6) {
+        scenePromptEn = `hands spinning and testing the wheels of a completed small mini toy car model`;
+      } else if (i === 7) {
+        scenePromptEn = `final showcase display of a fully assembled beautiful mini toy car on a dark wooden studio table`;
       }
 
-      // Gabungkan menjadi instruksi gambar makro sinematik yang jelas dipahami AI
-      const sharpAiPrompt = `macro close-up photography of ${progressiveAction}, realistic toy model material style, warm studio lighting, bokeh background, sharp details`;
+      // Gabungkan menjadi instruksi gambar studio makro sinematik yang bersih tanpa karakter aneh
+      const sharpAiPrompt = `macro photography of ${scenePromptEn}, focused on ${englishKeyword}, professional toy photography style, warm studio lighting, bokeh background, sharp texture details`;
+      
+      // Enkripsi prompt agar aman dikirim melalui link URL internet
       const encodedPrompt = encodeURIComponent(sharpAiPrompt);
       
-      // OPTIMASI UKURAN: Dimensi diperkecil menjadi 350x262 agar loading secepat kilat dan hemat kuota
+      // OPTIMASI UKURAN: Menggunakan resolusi kecil (350x262) agar proses load secepat kilat dan anti-blokir
       const finalImageSourceUrl = `https://image.pollinations.ai/p/${encodedPrompt}?width=350&height=262&seed=${scene.id}&nologo=true&t=${Date.now()}`;
       
-      // Masukkan gambar ke dalam antrean visual satu per satu secara berurutan
+      // Masukkan gambar ke dalam antrean visual satu per satu secara bergantian
       setImageUrls((prev) => ({ 
         ...prev, 
         [scene.id]: finalImageSourceUrl 
       }));
       
-      // Jeda waktu antar request adegan (600 milidetik) agar server AI tidak overload
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      // Berikan jeda waktu 700 milidetik (0.7 detik) agar server AI memproses gambar secara rileks satu per satu
+      await new Promise((resolve) => setTimeout(resolve, 700));
     }
 
     setLoadingImages(false);
