@@ -13,9 +13,13 @@ export async function POST(req) {
 
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const systemInstruction = `
-      Anda adalah sutradara video pendek profesional untuk platform TikTok/Reels. Tugas Anda adalah membuat skrip storyboard terstruktur berdasarkan ide user.
-      Anda WAJIB membalas HANYA dengan format JSON murni tanpa markdown, tanpa tanda \`\`\`json.
+    // Gabungkan instruksi sistem langsung ke dalam prompt utama agar kompatibel dengan versi SDK lama
+    const fullPrompt = `
+      Anda adalah sutradara video pendek profesional untuk platform TikTok/Reels. Tugas Anda adalah membuat skrip storyboard terstruktur berdasarkan ide dari user.
+      
+      Ide video dari user: "${prompt}"
+
+      PENTING: Anda WAJIB membalas HANYA dengan format JSON murni tanpa markdown, tanpa tanda \`\`\`json ataupun tag pembungkus lainnya. Jangan ketik teks penjelasan apa pun di luar JSON!
       
       Struktur JSON harus persis seperti ini:
       {
@@ -28,26 +32,27 @@ export async function POST(req) {
           {
             "id": 1,
             "timestamp": "0.00 - 1.20",
-            "image_placeholder_query": "kata kunci gambar unboxing lego",
+            "image_placeholder_query": "kata kunci gambar spesifik dalam bahasa inggris",
             "description": "DESKRIPSI VISUAL ADEGAN DALAM HURUF KAPITAL",
             "sfx": "DETAIL EFEK SUARA DALAM HURUF KAPITAL (misal: KLIK LEGO)"
           }
         ]
       }
-      Buatlah adegan yang padat (antara 6 sampai 8 scene) dengan pembagian timestamp yang presisi dan logis sesuai durasi total.
+      Buatlah adegan yang padat (antara 6 sampai 8 scene) dengan pembagian timestamp yang presisi dan logis sesuai durasi total video.
     `;
 
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.7,
-      },
-      systemInstruction: systemInstruction
-    });
+    // Hapus configuration yang memicu error di SDK versi lama
+    const result = await model.generateContent(fullPrompt);
 
     const responseText = result.response.text();
-    const storyboardData = JSON.parse(responseText);
+    
+    // Bersihkan teks jika AI tidak sengaja memberikan format markdown ```json ... ```
+    const cleanedText = responseText
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    const storyboardData = JSON.parse(cleanedText);
 
     return NextResponse.json(storyboardData);
   } catch (error) {
