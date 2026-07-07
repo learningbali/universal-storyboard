@@ -35,43 +35,53 @@ export default function Home() {
     }
   };
 
-  // 2. Fungsi Generate Gambar AI yang Sinkron & Anti-Pecah
- // 2. Fungsi Generate Gambar AI yang Sinkron, Akurat, & Anti-Blokir
+  // 2. Fungsi Generate Gambar AI Spesifik Alur, Resolusi Ringan, & Load Satu per Satu
   const generateImages = async () => {
     if (!storyboard || !storyboard.scenes) return;
     setLoadingImages(true);
-    setImageUrls({}); // Bersihkan gambar lama agar memicu loading baru
+    setImageUrls({}); 
     
-    const newUrls = {};
-    
-    // Looping dengan jeda waktu (delay) agar semua request gambar lolos dari blokir server AI
+    // Deteksi subjek utama video dari judul untuk bahan konsistensi gambar AI
+    const mainSubject = (storyboard.subtitle || storyboard.title || "miniature project")
+      .toLowerCase()
+      .replace(/asmr|merakit|puzzle/g, "")
+      .trim();
+
+    // Jalankan antrean tertib memuat gambar satu per satu secara berurutan
     for (let i = 0; i < storyboard.scenes.length; i++) {
       const scene = storyboard.scenes[i];
+      const sceneDesc = scene.description.toLowerCase();
       
-      // Ambil kata kunci utama (image_placeholder_query) yang dibuat AI, lalu bersihkan
-      const keyword = scene.image_placeholder_query || "toy bicycle";
+      // Logika Penyelaras Alur Cerita Otomatis (Mengubah Teks Indonesia ke Prompt Gambar AI Inggris yang Akurat)
+      let progressiveAction = `assembling parts of ${mainSubject}`;
       
-      // Mengonversi instruksi detail ke bahasa inggris sederhana berdasarkan tipe scene agar AI paham 100%
-      let customContext = "miniature toy bicycle puzzle parts on table";
-      if (scene.id === 1) customContext = "hands unboxing miniature toy bicycle puzzle package on wooden table";
-      if (scene.id === 2) customContext = "hands assembling main frame of a colorful small toy bicycle";
-      if (scene.id === 3 || scene.id === 4) customContext = "macro photography of hands putting tiny wheels on a miniature toy bicycle";
-      if (scene.id === 5 || scene.id === 6) customContext = "hands fixing tiny handlebars and seat on small miniature toy bike";
-      if (scene.id >= 7) customContext = "final showcase of a beautiful assembled colorful miniature toy bicycle model on a table";
+      if (i === 0 || sceneDesc.includes("buka") || sceneDesc.includes("kotak")) {
+        progressiveAction = `unboxing package elements of ${mainSubject} on a table`;
+      } else if (i === 1 || sceneDesc.includes("awal") || sceneDesc.includes("dasar") || sceneDesc.includes("chassis")) {
+        progressiveAction = `assembling the starting base foundation pieces of ${mainSubject}`;
+      } else if (sceneDesc.includes("roda") || sceneDesc.includes("ban")) {
+        progressiveAction = `attaching small tiny wheels onto the structure of ${mainSubject}`;
+      } else if (sceneDesc.includes("stang") || sceneDesc.includes("sadel") || sceneDesc.includes("kemudi")) {
+        progressiveAction = `fixing micro details like steering handle bar onto ${mainSubject}`;
+      } else if (i === storyboard.scenes.length - 1 || sceneDesc.includes("akhir") || sceneDesc.includes("jadi")) {
+        progressiveAction = `completed assembled final product model of ${mainSubject} showcase display`;
+      }
 
-      // Susun prompt gambar AI bahasa inggris yang super tajam, spesifik, dan estetik sinematik
-      const fullAiImagePrompt = `cinematic macro close up photography of ${customContext}, professional toy photography style, miniature scale, vibrant colors, warm studio lighting, bokeh background, highly detailed`;
+      // Gabungkan menjadi instruksi gambar makro sinematik yang jelas dipahami AI
+      const sharpAiPrompt = `macro close-up photography of ${progressiveAction}, realistic toy model material style, warm studio lighting, bokeh background, sharp details`;
+      const encodedPrompt = encodeURIComponent(sharpAiPrompt);
       
-      const encodedPrompt = encodeURIComponent(fullAiImagePrompt);
+      // OPTIMASI UKURAN: Dimensi diperkecil menjadi 350x262 agar loading secepat kilat dan hemat kuota
+      const finalImageSourceUrl = `https://image.pollinations.ai/p/${encodedPrompt}?width=350&height=262&seed=${scene.id}&nologo=true&t=${Date.now()}`;
       
-      // Gunakan penanda waktu unik (timestamp) di setiap baris agar browser dipaksa memuat gambar baru, bukan cache lama
-      newUrls[scene.id] = `https://image.pollinations.ai/p/${encodedPrompt}?width=500&height=375&seed=${scene.id}&nologo=true&t=${Date.now()}`;
+      // Masukkan gambar ke dalam antrean visual satu per satu secara berurutan
+      setImageUrls((prev) => ({ 
+        ...prev, 
+        [scene.id]: finalImageSourceUrl 
+      }));
       
-      // Mengatur jeda waktu 400 milidetik antar scene agar server tidak menolak request gambar
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      
-      // Update state secara bertahap (efek gambar muncul satu per satu secara premium)
-      setImageUrls((prev) => ({ ...prev, [scene.id]: newUrls[scene.id] }));
+      // Jeda waktu antar request adegan (600 milidetik) agar server AI tidak overload
+      await new Promise((resolve) => setTimeout(resolve, 600));
     }
 
     setLoadingImages(false);
@@ -90,7 +100,7 @@ export default function Home() {
             type="text"
             value={inputPrompt}
             onChange={(e) => setInputPrompt(e.target.value)}
-            placeholder="Contoh: ASMR merakit LEGO Pajero hitam durasi 10 detik..."
+            placeholder="Contoh: ASMR merakit miniatur puzzle sepeda anak..."
             className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-500 transition placeholder-zinc-700 shadow-inner"
             disabled={loadingText}
           />
@@ -110,14 +120,14 @@ export default function Home() {
               className="bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 transition disabled:opacity-40 tracking-widest uppercase shadow-[0_4px_20px_rgba(245,158,11,0.2)]"
               disabled={loadingImages || !storyboard || loadingText}
             >
-              {loadingImages ? <Loader2 className="animate-spin" size={14} /> : <ImageIcon className="animate-spin-none" size={14} />} 
+              {loadingImages ? <Loader2 className="animate-spin" size={14} /> : <ImageIcon size={14} />} 
               2. Generate Image
             </button>
           </div>
         </div>
       </div>
 
-      {/* TAMPILAN PREMIUM GRID STORYBOARD 9:16 */}
+      {/* TAMPILAN GRID STORYBOARD */}
       {storyboard ? (
         <div className="w-full max-w-4xl border border-zinc-800 bg-zinc-950 p-6 md:p-8 rounded-2xl flex flex-col justify-between shadow-2xl">
           
@@ -131,7 +141,7 @@ export default function Home() {
             <p className="text-zinc-500 text-[10px] tracking-[0.2em] font-mono">{storyboard.duration} - {storyboard.ratio}</p>
           </header>
 
-          {/* GRID PANELS (3 KOLOM PERSIS SPERTI REFERENSI GAMBAR) */}
+          {/* GRID PANELS (3 KOLOM SEJAJAR) */}
           <main className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 my-6">
             {storyboard.scenes?.map((scene) => (
               <div key={scene.id} className="border border-zinc-800 flex flex-col justify-between bg-black rounded-xl overflow-hidden shadow-lg transition-all duration-300">
@@ -142,22 +152,18 @@ export default function Home() {
                   <span className="text-amber-500/80 font-bold">{scene.timestamp}</span>
                 </div>
                 
-                {/* CANVAS GAMBAR AI */}
-                <div className="relative aspect-[4/3] bg-zinc-950 flex items-center justify-center overflow-hidden border-b border-zinc-800/50">
+                {/* KOTAK KONTAINER GAMBAR AI (UKURANNYA SUDAH KECIL & RINGAN DI SINI) */}
+                <div className="relative aspect-[4/3] max-w-[240px] w-full mx-auto my-3 bg-zinc-950 flex items-center justify-center overflow-hidden border border-zinc-900 rounded-lg shadow-inner">
                   {imageUrls[scene.id] ? (
                     <img 
                       src={imageUrls[scene.id]} 
                       alt={scene.description}
                       className="w-full h-full object-cover filter grayscale hover:grayscale-0 transition-all duration-500"
-                      onError={(e) => {
-                        // Anti-pecah: jika link pertama error, langsung ganti ke engine cadangan otomatis
-                        e.target.src = `https://loremflickr.com/500/375/${encodeURIComponent(scene.image_placeholder_query || "toy")}?random=${scene.id}`;
-                      }}
                     />
                   ) : (
-                    <div className="text-zinc-700 flex flex-col items-center gap-1.5 p-4 text-center">
-                      <ImageIcon size={20} className="opacity-30 text-amber-500" />
-                      <span className="text-[9px] uppercase tracking-wider text-zinc-600">Klik "2. Generate Image"</span>
+                    <div className="text-zinc-700 flex flex-col items-center gap-1.5 p-4 text-center animate-pulse">
+                      <ImageIcon size={16} className="text-amber-500/40" />
+                      <span className="text-[8px] uppercase tracking-widest text-zinc-700">Menunggu...</span>
                     </div>
                   )}
                 </div>
